@@ -185,72 +185,17 @@
       font-style: italic;
     }
 
-    /* Hidden Spotify players – rendered but invisible so the API works */
-    #spotifyPlayers {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      width: 320px;
-      height: 90px;
-      opacity: 0;
-      pointer-events: none;
-      z-index: -1;
+    .spotify-player {
+      width: 100%;
+      max-width: 320px;
+      margin: 1.25rem auto 0;
+      border-radius: 12px;
       overflow: hidden;
     }
 
-    .spotify-slot {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-    }
-
-    /* Now-playing indicator */
-    .now-playing {
-      position: fixed;
-      bottom: 1.25rem;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 1000;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.5rem 1rem;
-      border-radius: 50px;
-      background: rgba(0,0,0,0.55);
-      backdrop-filter: blur(12px);
-      font-size: 0.8rem;
-      opacity: 0;
-      transition: opacity 0.4s;
-      pointer-events: none;
-    }
-
-    .now-playing.active {
-      opacity: 1;
-    }
-
-    .eq-bars {
-      display: flex;
-      align-items: flex-end;
-      gap: 2px;
-      height: 14px;
-    }
-
-    .eq-bars span {
-      width: 3px;
-      background: #1db954;
-      border-radius: 1px;
-      animation: eqPulse 0.8s ease-in-out infinite alternate;
-    }
-
-    .eq-bars span:nth-child(1) { height: 6px;  animation-delay: 0s; }
-    .eq-bars span:nth-child(2) { height: 12px; animation-delay: 0.2s; }
-    .eq-bars span:nth-child(3) { height: 8px;  animation-delay: 0.4s; }
-
-    @keyframes eqPulse {
-      0%   { transform: scaleY(0.4); }
-      100% { transform: scaleY(1); }
+    .spotify-player iframe {
+      display: block;
+      border-radius: 12px;
     }
 
     /* ── Joke slide ──────────────────────────────────────── */
@@ -508,17 +453,6 @@
   </style>
 </head>
 <body>
-<script src="https://open.spotify.com/embed/iframe-api/v1" async></script>
-
-<!-- Hidden Spotify player container (off-screen but rendered) -->
-<div id="spotifyPlayers"></div>
-
-<!-- Now-playing indicator -->
-<div class="now-playing" id="nowPlaying">
-  <div class="eq-bars"><span></span><span></span><span></span></div>
-  <span id="nowPlayingText"></span>
-</div>
-
 <!-- Edit Button -->
 <button class="edit-btn" id="editBtn" title="Edit songs & memories">&#9998;</button>
 
@@ -684,90 +618,16 @@
 
   let songs = loadSongs();
 
-  /* ── Spotify playback engine ─────────────────────── */
+  /* ── Spotify helpers ───────────────────────────────── */
   function extractSpotifyTrackId(url) {
     if (!url) return null;
     const match = url.match(/track\/([a-zA-Z0-9]+)/);
     return match ? match[1] : null;
   }
 
-  const spotifyControllers = {};   // year -> EmbedController
-  const isPlaying = {};            // year -> boolean (true = playing)
-  let spotifyAPIReady = false;
-  let activeYear = null;
-
-  window.onSpotifyIframeApiReady = (IFrameAPI) => {
-    spotifyAPIReady = true;
-    window._SpotifyIFrameAPI = IFrameAPI;
-    initSpotifyPlayers();
-  };
-
-  function initSpotifyPlayers() {
-    if (!spotifyAPIReady || !window._SpotifyIFrameAPI) return;
-    const IFrameAPI = window._SpotifyIFrameAPI;
-    const container = document.getElementById("spotifyPlayers");
-    container.innerHTML = "";
-    Object.keys(spotifyControllers).forEach(y => delete spotifyControllers[y]);
-    Object.keys(isPlaying).forEach(y => delete isPlaying[y]);
-
-    Object.keys(songs).sort().forEach(year => {
-      const trackId = extractSpotifyTrackId(songs[year].spotifyUrl || "");
-      if (!trackId) return;
-
-      const slot = document.createElement("div");
-      slot.className = "spotify-slot";
-      slot.id = `sp-slot-${year}`;
-      container.appendChild(slot);
-
-      IFrameAPI.createController(slot, {
-        uri: `spotify:track:${trackId}`,
-        width: 320,
-        height: 80
-      }, (controller) => {
-        spotifyControllers[year] = controller;
-        isPlaying[year] = false;
-
-        controller.addListener("playback_update", (e) => {
-          isPlaying[year] = !e.data.isPaused;
-        });
-      });
-    });
-  }
-
-  function playYear(year) {
-    if (activeYear === year) return;
-    // Pause the previously active track
-    if (activeYear && spotifyControllers[activeYear] && isPlaying[activeYear]) {
-      spotifyControllers[activeYear].togglePlay();
-    }
-    activeYear = year;
-    // Play the new track
-    if (spotifyControllers[year]) {
-      if (!isPlaying[year]) {
-        spotifyControllers[year].togglePlay();
-      }
-      showNowPlaying(year);
-    }
-  }
-
-  function pauseAll() {
-    if (activeYear && spotifyControllers[activeYear] && isPlaying[activeYear]) {
-      spotifyControllers[activeYear].togglePlay();
-    }
-    activeYear = null;
-    hideNowPlaying();
-  }
-
-  function showNowPlaying(year) {
-    const el = document.getElementById("nowPlaying");
-    const txt = document.getElementById("nowPlayingText");
-    const s = songs[year];
-    if (s) txt.textContent = `${s.song} — ${s.artist}`;
-    el.classList.add("active");
-  }
-
-  function hideNowPlaying() {
-    document.getElementById("nowPlaying").classList.remove("active");
+  function buildSpotifyEmbed(trackId) {
+    if (!trackId) return "";
+    return `<div class="spotify-player"><iframe src="https://open.spotify.com/embed/track/${trackId}?utm_source=generator&theme=0" width="100%" height="152" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>`;
   }
 
   /* ── Render year slides ─────────────────────────────── */
@@ -781,10 +641,12 @@
         ? `<img src="${escapeHtml(s.albumArt)}" alt="Album art for ${escapeHtml(s.song)}" loading="lazy">`
         : "&#127925;";
 
+      const trackId = extractSpotifyTrackId(s.spotifyUrl || "");
+      const playerHtml = buildSpotifyEmbed(trackId);
+
       const section = document.createElement("section");
       section.className = `slide ${gradClasses[year] || ""}`;
       section.id = `slide-${year}`;
-      section.setAttribute("data-year", year);
       section.innerHTML = `
         <div class="year-content animate-in">
           <div class="album-art">${artInner}</div>
@@ -792,45 +654,25 @@
           <div class="song-title">${escapeHtml(s.song)}</div>
           <div class="artist-name">${escapeHtml(s.artist)}</div>
           <div class="memory">&ldquo;${escapeHtml(s.memory)}&rdquo;</div>
+          ${playerHtml}
         </div>
       `;
       container.appendChild(section);
     });
 
     observeAnimations();
-    initSpotifyPlayers();
   }
 
-  /* ── Intersection observers (animation + autoplay) ── */
+  /* ── Intersection observer for scroll animations ──── */
   function observeAnimations() {
     const els = document.querySelectorAll(".animate-in");
-    const animObs = new IntersectionObserver((entries) => {
+    const obs = new IntersectionObserver((entries) => {
       entries.forEach(e => {
         if (e.isIntersecting) e.target.classList.add("visible");
         else e.target.classList.remove("visible");
       });
     }, { threshold: 0.25 });
-    els.forEach(el => animObs.observe(el));
-
-    // Autoplay when a year slide is mostly visible
-    const yearSlides = document.querySelectorAll("[data-year]");
-    const playObs = new IntersectionObserver((entries) => {
-      entries.forEach(e => {
-        if (e.isIntersecting) {
-          playYear(e.target.getAttribute("data-year"));
-        }
-      });
-    }, { threshold: 0.6 });
-    yearSlides.forEach(el => playObs.observe(el));
-
-    // Pause when non-year slides come into view
-    const otherSlides = document.querySelectorAll(".slide:not([data-year])");
-    const pauseObs = new IntersectionObserver((entries) => {
-      entries.forEach(e => {
-        if (e.isIntersecting) pauseAll();
-      });
-    }, { threshold: 0.6 });
-    otherSlides.forEach(el => pauseObs.observe(el));
+    els.forEach(el => obs.observe(el));
   }
 
   /* ── Edit modal ─────────────────────────────────────── */
@@ -866,7 +708,6 @@
   }
 
   function saveModal() {
-    pauseAll();
     document.querySelectorAll("#modalFields input, #modalFields textarea").forEach(el => {
       const year = el.dataset.year;
       const field = el.dataset.field;
