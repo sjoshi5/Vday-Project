@@ -185,17 +185,81 @@
       font-style: italic;
     }
 
-    .spotify-player {
-      width: 100%;
-      max-width: 320px;
-      margin: 1.25rem auto 0;
-      border-radius: 12px;
+    /* ── Play button on slides ─────────────────────────── */
+    .play-btn {
+      margin-top: 1.25rem;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255,255,255,0.18);
+      backdrop-filter: blur(8px);
+      color: #fff;
+      font-size: 1.3rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, transform 0.2s;
+    }
+
+    .play-btn:hover {
+      background: rgba(255,255,255,0.3);
+      transform: scale(1.08);
+    }
+
+    .play-btn.playing {
+      background: #1db954;
+    }
+
+    /* ── Now-playing bar ──────────────────────────────── */
+    .now-playing {
+      position: fixed;
+      bottom: 1.25rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 1rem;
+      border-radius: 50px;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(12px);
+      font-size: 0.78rem;
+      opacity: 0;
+      transition: opacity 0.4s;
+      pointer-events: none;
+      white-space: nowrap;
+      max-width: 90vw;
       overflow: hidden;
     }
 
-    .spotify-player iframe {
-      display: block;
-      border-radius: 12px;
+    .now-playing.active {
+      opacity: 1;
+    }
+
+    .eq-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      height: 14px;
+    }
+
+    .eq-bars span {
+      width: 3px;
+      background: #1db954;
+      border-radius: 1px;
+      animation: eqPulse 0.8s ease-in-out infinite alternate;
+    }
+
+    .eq-bars span:nth-child(1) { height: 6px;  animation-delay: 0s; }
+    .eq-bars span:nth-child(2) { height: 12px; animation-delay: 0.2s; }
+    .eq-bars span:nth-child(3) { height: 8px;  animation-delay: 0.4s; }
+
+    @keyframes eqPulse {
+      0%   { transform: scaleY(0.4); }
+      100% { transform: scaleY(1); }
     }
 
     /* ── Joke slide ──────────────────────────────────────── */
@@ -453,6 +517,12 @@
   </style>
 </head>
 <body>
+<!-- Now-playing bar -->
+<div class="now-playing" id="nowPlaying">
+  <div class="eq-bars"><span></span><span></span><span></span></div>
+  <span id="nowPlayingText"></span>
+</div>
+
 <!-- Edit Button -->
 <button class="edit-btn" id="editBtn" title="Edit songs & memories">&#9998;</button>
 
@@ -618,16 +688,137 @@
 
   let songs = loadSongs();
 
-  /* ── Spotify helpers ───────────────────────────────── */
-  function extractSpotifyTrackId(url) {
-    if (!url) return null;
-    const match = url.match(/track\/([a-zA-Z0-9]+)/);
-    return match ? match[1] : null;
+  /* ── Audio playback engine (iTunes 30s previews) ─── */
+  const audio = new Audio();
+  audio.volume = 0.7;
+  let activeYear = null;
+  let previewUrls = {};    // year -> preview mp3 url
+  let userInteracted = false;
+
+  // Track user interaction so we can auto-play after first gesture
+  document.addEventListener("click", () => { userInteracted = true; }, { once: true });
+  document.addEventListener("touchstart", () => { userInteracted = true; }, { once: true });
+
+  async function fetchPreviewUrl(songTitle, artist) {
+    try {
+      const query = encodeURIComponent(`${songTitle} ${artist}`);
+      const resp = await fetch(`https://itunes.apple.com/search?term=${query}&media=music&limit=1`);
+      const data = await resp.json();
+      if (data.results && data.results[0] && data.results[0].previewUrl) {
+        return data.results[0].previewUrl;
+      }
+    } catch (_) { /* network error – silently skip */ }
+    return null;
   }
 
-  function buildSpotifyEmbed(trackId) {
-    if (!trackId) return "";
-    return `<div class="spotify-player"><iframe src="https://open.spotify.com/embed/track/${trackId}?utm_source=generator&theme=0" width="100%" height="152" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>`;
+  async function loadAllPreviews() {
+    const cached = localStorage.getItem("previewUrlCache");
+    if (cached) {
+      try { previewUrls = JSON.parse(cached); } catch (_) { /* ignore */ }
+    }
+
+    const years = Object.keys(songs).sort();
+    const fetches = years.map(async (year) => {
+      const s = songs[year];
+      const key = `${s.song}|${s.artist}`;
+      // Re-fetch if song/artist changed or no cached url
+      if (previewUrls[year] && previewUrls[year].key === key) return;
+      const url = await fetchPreviewUrl(s.song, s.artist);
+      previewUrls[year] = { key, url };
+    });
+    await Promise.all(fetches);
+    localStorage.setItem("previewUrlCache", JSON.stringify(previewUrls));
+    updateAllPlayButtons();
+  }
+
+  function fadeOutAudio(cb) {
+    const fadeStep = 0.05;
+    const fadeInterval = setInterval(() => {
+      if (audio.volume > fadeStep) {
+        audio.volume -= fadeStep;
+      } else {
+        audio.volume = 0;
+        audio.pause();
+        clearInterval(fadeInterval);
+        audio.volume = 0.7;
+        if (cb) cb();
+      }
+    }, 30);
+  }
+
+  function playYear(year) {
+    if (activeYear === year && !audio.paused) return;
+    const preview = previewUrls[year];
+    if (!preview || !preview.url) return;
+
+    // If something is playing, fade out first
+    if (!audio.paused) {
+      fadeOutAudio(() => startTrack(year, preview.url));
+    } else {
+      startTrack(year, preview.url);
+    }
+  }
+
+  function startTrack(year, url) {
+    activeYear = year;
+    audio.src = url;
+    audio.volume = 0.7;
+    audio.play().catch(() => { /* blocked until user interacts */ });
+    updateAllPlayButtons();
+    showNowPlaying(year);
+  }
+
+  function pausePlayback() {
+    if (!audio.paused) {
+      fadeOutAudio();
+    }
+    activeYear = null;
+    updateAllPlayButtons();
+    hideNowPlaying();
+  }
+
+  function toggleYear(year) {
+    if (activeYear === year && !audio.paused) {
+      pausePlayback();
+    } else {
+      playYear(year);
+    }
+  }
+
+  function updateAllPlayButtons() {
+    document.querySelectorAll(".play-btn").forEach(btn => {
+      const y = btn.getAttribute("data-year");
+      const hasPreview = previewUrls[y] && previewUrls[y].url;
+      btn.style.display = hasPreview ? "inline-flex" : "none";
+      if (y === activeYear && !audio.paused) {
+        btn.classList.add("playing");
+        btn.textContent = "\u275A\u275A";   // pause icon
+      } else {
+        btn.classList.remove("playing");
+        btn.textContent = "\u25B6";          // play icon
+      }
+    });
+  }
+
+  audio.addEventListener("ended", () => {
+    activeYear = null;
+    updateAllPlayButtons();
+    hideNowPlaying();
+  });
+
+  audio.addEventListener("pause", updateAllPlayButtons);
+  audio.addEventListener("play", updateAllPlayButtons);
+
+  function showNowPlaying(year) {
+    const el = document.getElementById("nowPlaying");
+    const txt = document.getElementById("nowPlayingText");
+    const s = songs[year];
+    if (s) txt.textContent = `${s.song} \u2014 ${s.artist}`;
+    el.classList.add("active");
+  }
+
+  function hideNowPlaying() {
+    document.getElementById("nowPlaying").classList.remove("active");
   }
 
   /* ── Render year slides ─────────────────────────────── */
@@ -641,12 +832,10 @@
         ? `<img src="${escapeHtml(s.albumArt)}" alt="Album art for ${escapeHtml(s.song)}" loading="lazy">`
         : "&#127925;";
 
-      const trackId = extractSpotifyTrackId(s.spotifyUrl || "");
-      const playerHtml = buildSpotifyEmbed(trackId);
-
       const section = document.createElement("section");
       section.className = `slide ${gradClasses[year] || ""}`;
       section.id = `slide-${year}`;
+      section.setAttribute("data-year", year);
       section.innerHTML = `
         <div class="year-content animate-in">
           <div class="album-art">${artInner}</div>
@@ -654,25 +843,55 @@
           <div class="song-title">${escapeHtml(s.song)}</div>
           <div class="artist-name">${escapeHtml(s.artist)}</div>
           <div class="memory">&ldquo;${escapeHtml(s.memory)}&rdquo;</div>
-          ${playerHtml}
+          <button class="play-btn" data-year="${year}" style="display:none">\u25B6</button>
         </div>
       `;
       container.appendChild(section);
     });
 
-    observeAnimations();
+    // Wire play buttons
+    document.querySelectorAll(".play-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleYear(btn.getAttribute("data-year"));
+      });
+    });
+
+    observeSlides();
+    loadAllPreviews();
   }
 
-  /* ── Intersection observer for scroll animations ──── */
-  function observeAnimations() {
+  /* ── Intersection observers ─────────────────────────── */
+  function observeSlides() {
+    // Fade-in animations
     const els = document.querySelectorAll(".animate-in");
-    const obs = new IntersectionObserver((entries) => {
+    const animObs = new IntersectionObserver((entries) => {
       entries.forEach(e => {
         if (e.isIntersecting) e.target.classList.add("visible");
         else e.target.classList.remove("visible");
       });
     }, { threshold: 0.25 });
-    els.forEach(el => obs.observe(el));
+    els.forEach(el => animObs.observe(el));
+
+    // Auto-play when a year slide scrolls into view
+    const yearSlides = document.querySelectorAll("[data-year]");
+    const playObs = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting && userInteracted) {
+          playYear(e.target.getAttribute("data-year"));
+        }
+      });
+    }, { threshold: 0.6 });
+    yearSlides.forEach(el => playObs.observe(el));
+
+    // Pause on non-year slides
+    const otherSlides = document.querySelectorAll(".slide:not([data-year])");
+    const pauseObs = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) pausePlayback();
+      });
+    }, { threshold: 0.6 });
+    otherSlides.forEach(el => pauseObs.observe(el));
   }
 
   /* ── Edit modal ─────────────────────────────────────── */
@@ -692,8 +911,6 @@
         <input type="text" data-year="${year}" data-field="artist" value="${escapeAttr(s.artist)}">
         <label>Album Art URL <span style="opacity:0.5">(optional)</span></label>
         <input type="url" data-year="${year}" data-field="albumArt" value="${escapeAttr(s.albumArt)}" placeholder="https://...">
-        <label>Spotify Track URL <span style="opacity:0.5">(paste from Spotify share)</span></label>
-        <input type="url" data-year="${year}" data-field="spotifyUrl" value="${escapeAttr(s.spotifyUrl || "")}" placeholder="https://open.spotify.com/track/...">
         <label>Memory</label>
         <textarea data-year="${year}" data-field="memory">${escapeHtml(s.memory)}</textarea>
       `;
@@ -708,6 +925,7 @@
   }
 
   function saveModal() {
+    pausePlayback();
     document.querySelectorAll("#modalFields input, #modalFields textarea").forEach(el => {
       const year = el.dataset.year;
       const field = el.dataset.field;
@@ -716,6 +934,8 @@
       }
     });
     saveSongs(songs);
+    localStorage.removeItem("previewUrlCache");  // re-fetch previews for new songs
+    previewUrls = {};
     renderSlides();
     closeModal();
   }
@@ -741,7 +961,6 @@
 
   /* ── Init ───────────────────────────────────────────── */
   renderSlides();
-  observeAnimations();
 </script>
 
 </body>
