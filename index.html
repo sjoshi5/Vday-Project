@@ -110,15 +110,29 @@
       bottom: 2rem;
       left: 50%;
       transform: translateX(-50%);
-      font-size: 0.8rem;
-      opacity: 0.6;
       animation: bounce 2s infinite;
       text-align: center;
+      border: none;
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(8px);
+      color: #fff;
+      padding: 0.65rem 1.6rem;
+      border-radius: 50px;
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      letter-spacing: 0.5px;
+    }
+
+    .scroll-hint:hover {
+      background: rgba(255,255,255,0.28);
     }
 
     @keyframes bounce {
       0%, 100% { transform: translateX(-50%) translateY(0); }
-      50% { transform: translateX(-50%) translateY(-10px); }
+      50% { transform: translateX(-50%) translateY(-8px); }
     }
 
     /* ── Year slides ─────────────────────────────────────── */
@@ -534,7 +548,7 @@
     <p class="subtitle">A soundtrack for every chapter</p>
     <span class="year-range">2017 &mdash; 2025</span>
   </div>
-  <div class="scroll-hint">Scroll down &darr;</div>
+  <button class="scroll-hint" id="startBtn">&#9654; Play Our Story</button>
 </section>
 
 <!-- Year slides injected by JS -->
@@ -957,6 +971,15 @@
   document.getElementById("modalSave").addEventListener("click", saveModal);
   document.getElementById("modalOverlay").addEventListener("click", (e) => {
     if (e.target === e.currentTarget) closeModal();
+  });
+
+  /* ── Start button on intro slide ─────────────────────── */
+  document.getElementById("startBtn").addEventListener("click", () => {
+    userInteracted = true;
+    const firstSlide = document.getElementById("slide-2017");
+    if (firstSlide) {
+      firstSlide.scrollIntoView({ behavior: "smooth" });
+    }
   });
 
   /* ── Init ───────────────────────────────────────────── */
