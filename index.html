@@ -453,6 +453,7 @@
   </style>
 </head>
 <body>
+<script src="https://open.spotify.com/embed/iframe-api/v1" async></script>
 
 <!-- Edit Button -->
 <button class="edit-btn" id="editBtn" title="Edit songs & memories">&#9998;</button>
@@ -626,9 +627,60 @@
     return match ? match[1] : null;
   }
 
-  function buildSpotifyEmbed(trackId) {
-    if (!trackId) return "";
-    return `<div class="spotify-player"><iframe src="https://open.spotify.com/embed/track/${trackId}?utm_source=generator&theme=0" width="100%" height="80" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>`;
+  // Map: year -> EmbedController
+  const spotifyControllers = {};
+  let spotifyAPIReady = false;
+  let activeYear = null;
+
+  window.onSpotifyIframeApiReady = (IFrameAPI) => {
+    spotifyAPIReady = true;
+    window._SpotifyIFrameAPI = IFrameAPI;
+    initSpotifyPlayers();
+  };
+
+  function initSpotifyPlayers() {
+    if (!spotifyAPIReady || !window._SpotifyIFrameAPI) return;
+    const IFrameAPI = window._SpotifyIFrameAPI;
+
+    // Destroy any existing controllers (on re-render)
+    Object.keys(spotifyControllers).forEach(y => delete spotifyControllers[y]);
+
+    Object.keys(songs).sort().forEach(year => {
+      const trackId = extractSpotifyTrackId(songs[year].spotifyUrl || "");
+      const el = document.getElementById(`spotify-embed-${year}`);
+      if (!trackId || !el) return;
+
+      IFrameAPI.createController(el, {
+        uri: `spotify:track:${trackId}`,
+        width: "100%",
+        height: 80
+      }, (controller) => {
+        spotifyControllers[year] = controller;
+        // Start paused
+        controller.addListener("ready", () => {
+          controller.pause();
+        });
+      });
+    });
+  }
+
+  function playYear(year) {
+    if (activeYear === year) return;
+    // Pause previous
+    if (activeYear && spotifyControllers[activeYear]) {
+      spotifyControllers[activeYear].pause();
+    }
+    activeYear = year;
+    if (spotifyControllers[year]) {
+      spotifyControllers[year].resume();
+    }
+  }
+
+  function pauseAll() {
+    if (activeYear && spotifyControllers[activeYear]) {
+      spotifyControllers[activeYear].pause();
+    }
+    activeYear = null;
   }
 
   /* ── Render year slides ─────────────────────────────── */
@@ -643,11 +695,14 @@
         : "&#127925;";
 
       const trackId = extractSpotifyTrackId(s.spotifyUrl || "");
-      const playerHtml = buildSpotifyEmbed(trackId);
+      const playerPlaceholder = trackId
+        ? `<div class="spotify-player" id="spotify-embed-${year}"></div>`
+        : "";
 
       const section = document.createElement("section");
       section.className = `slide ${gradClasses[year] || ""}`;
       section.id = `slide-${year}`;
+      section.setAttribute("data-year", year);
       section.innerHTML = `
         <div class="year-content animate-in">
           <div class="album-art">${artInner}</div>
@@ -655,19 +710,20 @@
           <div class="song-title">${escapeHtml(s.song)}</div>
           <div class="artist-name">${escapeHtml(s.artist)}</div>
           <div class="memory">&ldquo;${escapeHtml(s.memory)}&rdquo;</div>
-          ${playerHtml}
+          ${playerPlaceholder}
         </div>
       `;
       container.appendChild(section);
     });
 
     observeAnimations();
+    initSpotifyPlayers();
   }
 
-  /* ── Intersection observer for scroll animations ──── */
+  /* ── Intersection observer for scroll animations + autoplay ── */
   function observeAnimations() {
     const els = document.querySelectorAll(".animate-in");
-    const obs = new IntersectionObserver((entries) => {
+    const animObs = new IntersectionObserver((entries) => {
       entries.forEach(e => {
         if (e.isIntersecting) {
           e.target.classList.add("visible");
@@ -676,8 +732,28 @@
         }
       });
     }, { threshold: 0.25 });
+    els.forEach(el => animObs.observe(el));
 
-    els.forEach(el => obs.observe(el));
+    // Autoplay observer on year slides
+    const yearSlides = document.querySelectorAll("[data-year]");
+    const playObs = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        const year = e.target.getAttribute("data-year");
+        if (e.isIntersecting) {
+          playYear(year);
+        }
+      });
+    }, { threshold: 0.6 });
+    yearSlides.forEach(el => playObs.observe(el));
+
+    // Pause when non-year slides (intro/joke/outro) come into view
+    const otherSlides = document.querySelectorAll(".slide:not([data-year])");
+    const pauseObs = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) pauseAll();
+      });
+    }, { threshold: 0.6 });
+    otherSlides.forEach(el => pauseObs.observe(el));
   }
 
   /* ── Edit modal ─────────────────────────────────────── */
@@ -713,6 +789,7 @@
   }
 
   function saveModal() {
+    pauseAll();
     document.querySelectorAll("#modalFields input, #modalFields textarea").forEach(el => {
       const year = el.dataset.year;
       const field = el.dataset.field;
