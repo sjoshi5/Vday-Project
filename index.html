@@ -1102,16 +1102,20 @@
   document.addEventListener("click", () => { userInteracted = true; }, { once: true });
   document.addEventListener("touchstart", () => { userInteracted = true; }, { once: true });
 
-  async function fetchPreviewUrl(songTitle, artist) {
+  async function fetchItunesData(songTitle, artist) {
     try {
       const query = encodeURIComponent(`${songTitle} ${artist}`);
       const resp = await fetch(`https://itunes.apple.com/search?term=${query}&media=music&limit=1`);
       const data = await resp.json();
-      if (data.results && data.results[0] && data.results[0].previewUrl) {
-        return data.results[0].previewUrl;
+      const r = data.results && data.results[0];
+      if (r) {
+        return {
+          previewUrl: r.previewUrl || null,
+          artworkUrl: r.artworkUrl100 ? r.artworkUrl100.replace("100x100", "600x600") : null
+        };
       }
     } catch (_) { /* network error – silently skip */ }
-    return null;
+    return { previewUrl: null, artworkUrl: null };
   }
 
   async function loadAllPreviews() {
@@ -1124,14 +1128,52 @@
     const fetches = years.map(async (year) => {
       const s = songs[year];
       const key = `${s.song}|${s.artist}`;
-      // Re-fetch if song/artist changed or no cached url
+      // Re-fetch if song/artist changed or no cached data
       if (previewUrls[year] && previewUrls[year].key === key) return;
-      const url = await fetchPreviewUrl(s.song, s.artist);
-      previewUrls[year] = { key, url };
+      const result = await fetchItunesData(s.song, s.artist);
+      previewUrls[year] = { key, url: result.previewUrl, artwork: result.artworkUrl };
     });
     await Promise.all(fetches);
     localStorage.setItem("previewUrlCache", JSON.stringify(previewUrls));
     updateAllPlayButtons();
+    updateAlbumArt();
+  }
+
+  function updateAlbumArt() {
+    Object.keys(previewUrls).forEach(year => {
+      const artUrl = previewUrls[year] && previewUrls[year].artwork;
+      if (!artUrl) return;
+      const slide = document.getElementById(`slide-${year}`);
+      if (!slide) return;
+      const img = slide.querySelector(".album-art img");
+      if (img) {
+        // Only replace if the local image failed or hasn't loaded
+        if (!img.complete || img.naturalWidth === 0) {
+          img.src = artUrl;
+        }
+        // Also set as fallback if local image fails later
+        img.dataset.fallback = artUrl;
+        img.onerror = function() {
+          if (this.dataset.fallback && this.src !== this.dataset.fallback) {
+            this.src = this.dataset.fallback;
+          } else {
+            this.parentElement.innerHTML = "\uD83C\uDFB5";
+          }
+        };
+      } else {
+        // No img tag yet (local path was empty), inject one
+        const artDiv = slide.querySelector(".album-art");
+        if (artDiv && artDiv.textContent.trim() === "\uD83C\uDFB5") {
+          const newImg = document.createElement("img");
+          newImg.src = artUrl;
+          newImg.alt = "Album art";
+          newImg.loading = "lazy";
+          newImg.onerror = function() { this.parentElement.innerHTML = "\uD83C\uDFB5"; };
+          artDiv.innerHTML = "";
+          artDiv.appendChild(newImg);
+        }
+      }
+    });
   }
 
   function fadeOutAudio(cb) {
@@ -1232,7 +1274,7 @@
     Object.keys(songs).sort().forEach((year, idx) => {
       const s = songs[year];
       const artInner = s.albumArt
-        ? `<img src="${escapeHtml(s.albumArt)}" alt="Album art for ${escapeHtml(s.song)}" loading="lazy" onerror="this.parentElement.innerHTML='&#127925;'">`
+        ? `<img src="${escapeHtml(s.albumArt)}" alt="Album art for ${escapeHtml(s.song)}" loading="lazy" onerror="if(this.dataset.fallback&&this.src!==this.dataset.fallback){this.src=this.dataset.fallback}else{this.parentElement.innerHTML='&#127925;'}">`
         : "&#127925;";
 
       const side = idx % 2 === 0 ? "side-left" : "side-right";
