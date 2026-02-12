@@ -404,6 +404,106 @@
       font-style: italic;
     }
 
+    /* ── Fun fact expandable box ─────────────────────────── */
+    .fun-fact-wrapper {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 5;
+      max-width: 220px;
+    }
+
+    .fun-fact-wrapper.side-left {
+      left: clamp(0.5rem, 3vw, 2rem);
+    }
+
+    .fun-fact-wrapper.side-right {
+      right: clamp(0.5rem, 3vw, 2rem);
+    }
+
+    .fun-fact-toggle {
+      background: rgba(255,255,255,0.13);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.18);
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.45rem 0.9rem;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: background 0.25s, transform 0.25s;
+      white-space: nowrap;
+      letter-spacing: 0.3px;
+    }
+
+    .fun-fact-toggle:hover {
+      background: rgba(255,255,255,0.25);
+      transform: scale(1.05);
+    }
+
+    .fun-fact-toggle .arrow {
+      display: inline-block;
+      transition: transform 0.3s;
+      margin-left: 0.3rem;
+    }
+
+    .fun-fact-wrapper.open .fun-fact-toggle .arrow {
+      transform: rotate(180deg);
+    }
+
+    .fun-fact-body {
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition: max-height 0.4s ease, opacity 0.35s ease, margin 0.3s ease;
+      background: rgba(0,0,0,0.35);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 14px;
+      margin-top: 0;
+      padding: 0 0.85rem;
+      font-size: 0.8rem;
+      line-height: 1.5;
+      color: rgba(255,255,255,0.9);
+    }
+
+    .fun-fact-wrapper.open .fun-fact-body {
+      max-height: 200px;
+      opacity: 1;
+      margin-top: 0.5rem;
+      padding: 0.75rem 0.85rem;
+    }
+
+    .fun-fact-label {
+      font-weight: 700;
+      color: #f8c8dc;
+      display: block;
+      margin-bottom: 0.25rem;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Hide side boxes on very narrow screens, show inline instead */
+    @media (max-width: 740px) {
+      .fun-fact-wrapper {
+        position: static;
+        transform: none;
+        max-width: 100%;
+        margin-top: 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .fun-fact-body {
+        max-width: 300px;
+      }
+    }
+
     /* ── Play button on slides ─────────────────────────── */
     .play-btn {
       margin-top: 1.25rem;
@@ -865,63 +965,72 @@
       artist: "Ed Sheeran",
       albumArt: "images/2017.jpg",
       spotifyUrl: "https://open.spotify.com/track/0tgVpDi06FyKpA1z0VMD4v",
-      memory: "The year it all began. Everything just clicked."
+      memory: "The year it all began. Everything just clicked.",
+      funFact: "Ed Sheeran wrote this song on a tiny guitar in his house in just 20 minutes."
     },
     2018: {
       song: "Love Story",
       artist: "Taylor Swift",
       albumArt: "images/2018.jpg",
       spotifyUrl: "https://open.spotify.com/track/1D4PL9B8gOg78jiHbNkpAz",
-      memory: "Writing our own fairy tale, one day at a time."
+      memory: "Writing our own fairy tale, one day at a time.",
+      funFact: "Taylor wrote Love Story in 20 minutes on her bedroom floor after her parents disapproved of a guy she was dating."
     },
     2019: {
       song: "All of Me",
       artist: "John Legend",
       albumArt: "images/2019.jpg",
       spotifyUrl: "https://open.spotify.com/track/3U4isOIWM3VvDubwSI3y7a",
-      memory: "Learning that love means giving all of yourself."
+      memory: "Learning that love means giving all of yourself.",
+      funFact: "John Legend wrote this as a wedding gift for Chrissy Teigen\u2014she cried the first time she heard it."
     },
     2020: {
       song: "Blinding Lights",
       artist: "The Weeknd",
       albumArt: "images/2020.jpg",
       spotifyUrl: "https://open.spotify.com/track/0VjIjW4GlUZAMYd2vXMi3b",
-      memory: "A year of uncertainty, but never about us."
+      memory: "A year of uncertainty, but never about us.",
+      funFact: "Blinding Lights spent more weeks on the Billboard Hot 100 than any other song in history at 90 weeks."
     },
     2021: {
       song: "Levitating",
       artist: "Dua Lipa",
       albumArt: "images/2021.jpg",
       spotifyUrl: "https://open.spotify.com/track/39LLxExYz6ewLAo9BUVDKE",
-      memory: "We found new ways to lift each other up."
+      memory: "We found new ways to lift each other up.",
+      funFact: "Dua Lipa recorded Levitating in her pajamas during lockdown at a makeshift home studio."
     },
     2022: {
       song: "As It Was",
       artist: "Harry Styles",
       albumArt: "images/2022.jpg",
       spotifyUrl: "https://open.spotify.com/track/4Dvkj6JhhA12EX05fT7y2e",
-      memory: "Change all around, but you were my constant."
+      memory: "Change all around, but you were my constant.",
+      funFact: "The opening voice you hear is Harry\u2019s goddaughter Ruby, saying \u2018Come on Harry, we wanna say goodnight to you!\u2019"
     },
     2023: {
       song: "Lovers",
       artist: "Taylor Swift",
       albumArt: "images/2023.jpg",
       spotifyUrl: "https://open.spotify.com/track/1dGr1c8CrMLDpV6mPbImSI",
-      memory: "Every little moment became a treasure."
+      memory: "Every little moment became a treasure.",
+      funFact: "Taylor considers Lover one of her most personal songs\u2014she almost didn\u2019t release it because it felt too vulnerable."
     },
     2024: {
       song: "we can't be friends",
       artist: "Ariana Grande",
       albumArt: "images/2024.jpg",
       spotifyUrl: "https://open.spotify.com/track/4k6Uh1HXdhtusDW5y8Gbqy",
-      memory: "Good thing we're way more than friends."
+      memory: "Good thing we're way more than friends.",
+      funFact: "The music video is a direct homage to Eternal Sunshine of the Spotless Mind, Ariana\u2019s favorite film."
     },
     2025: {
       song: "Die With A Smile",
       artist: "Lady Gaga & Bruno Mars",
       albumArt: "images/2025.jpg",
       spotifyUrl: "https://open.spotify.com/track/2plbrEY59IikOBgBGLjaoe",
-      memory: "This year is already our best chapter yet."
+      memory: "This year is already our best chapter yet.",
+      funFact: "Gaga and Bruno recorded this in a single late-night session\u2014the entire song came together in just a few hours."
     }
   };
 
@@ -1099,11 +1208,22 @@
     const container = document.getElementById("yearSlides");
     container.innerHTML = "";
 
-    Object.keys(songs).sort().forEach(year => {
+    Object.keys(songs).sort().forEach((year, idx) => {
       const s = songs[year];
       const artInner = s.albumArt
         ? `<img src="${escapeHtml(s.albumArt)}" alt="Album art for ${escapeHtml(s.song)}" loading="lazy" onerror="this.parentElement.innerHTML='&#127925;'">`
         : "&#127925;";
+
+      const side = idx % 2 === 0 ? "side-left" : "side-right";
+      const funFactHtml = s.funFact ? `
+        <div class="fun-fact-wrapper ${side}">
+          <button class="fun-fact-toggle" onclick="this.parentElement.classList.toggle('open')">Fun Fact <span class="arrow">&#9660;</span></button>
+          <div class="fun-fact-body">
+            <span class="fun-fact-label">Fun Fact</span>
+            ${escapeHtml(s.funFact)}
+          </div>
+        </div>
+      ` : "";
 
       const section = document.createElement("section");
       section.className = `slide ${gradClasses[year] || ""}`;
@@ -1118,6 +1238,7 @@
           <div class="memory">&ldquo;${escapeHtml(s.memory)}&rdquo;</div>
           <button class="play-btn" data-year="${year}" style="display:none">\u25B6</button>
         </div>
+        ${funFactHtml}
       `;
       container.appendChild(section);
     });
@@ -1186,6 +1307,8 @@
         <input type="url" data-year="${year}" data-field="albumArt" value="${escapeAttr(s.albumArt)}" placeholder="https://...">
         <label>Memory</label>
         <textarea data-year="${year}" data-field="memory">${escapeHtml(s.memory)}</textarea>
+        <label>Fun Fact <span style="opacity:0.5">(optional)</span></label>
+        <textarea data-year="${year}" data-field="funFact">${escapeHtml(s.funFact || "")}</textarea>
       `;
       fields.appendChild(group);
     });
