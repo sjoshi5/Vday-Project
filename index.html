@@ -790,23 +790,23 @@
 <!-- Edit Button -->
 <button class="edit-btn" id="editBtn" title="Edit songs & memories">&#9998;</button>
 
-<!-- ── INTRO ──────────────────────────────────────────── -->
-<section class="slide grad-intro" id="slide-intro">
-  <div class="intro-content">
-    <p class="top-label">Spotify Wrapped Style</p>
-    <h1>Our Love Story<br>Wrapped</h1>
-    <p class="subtitle">A soundtrack for every chapter</p>
-    <span class="year-range">2017 &mdash; 2025</span>
+<!-- ── GREETING ─────────────────────────────────────── -->
+<section class="slide grad-greeting" id="slide-greeting">
+  <div class="greeting-content">
+    <span class="greeting-heart">&#10084;&#65039;</span>
+    <h1>Hello Shoi</h1>
+    <p class="greeting-sub">I made you a little something.<br>A soundtrack for every year we&#8217;ve shared&mdash;<br>our love story, wrapped.</p>
   </div>
   <button class="scroll-hint" id="startBtn">&#9654; Play Our Story</button>
 </section>
 
-<!-- ── GREETING ─────────────────────────────────────── -->
-<section class="slide grad-greeting" id="slide-greeting">
-  <div class="greeting-content animate-in">
-    <span class="greeting-heart">&#10084;&#65039;</span>
-    <h1>Hello Shoi</h1>
-    <p class="greeting-sub">Happy Valentine&#8217;s Day &#10084;&#65039;</p>
+<!-- ── INTRO ──────────────────────────────────────────── -->
+<section class="slide grad-intro" id="slide-intro">
+  <div class="intro-content animate-in">
+    <p class="top-label">Your Valentine&#8217;s Wrapped</p>
+    <h1>Our Love Story<br>Wrapped</h1>
+    <p class="subtitle">A soundtrack for every chapter</p>
+    <span class="year-range">2017 &mdash; 2025</span>
   </div>
 </section>
 
@@ -1232,12 +1232,12 @@
     if (e.target === e.currentTarget) closeModal();
   });
 
-  /* ── Start button on intro slide ─────────────────────── */
+  /* ── Start button on greeting slide ──────────────────── */
   document.getElementById("startBtn").addEventListener("click", () => {
     userInteracted = true;
-    const firstSlide = document.getElementById("slide-2017");
-    if (firstSlide) {
-      firstSlide.scrollIntoView({ behavior: "smooth" });
+    const introSlide = document.getElementById("slide-intro");
+    if (introSlide) {
+      introSlide.scrollIntoView({ behavior: "smooth" });
     }
   });
 
