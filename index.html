@@ -1051,10 +1051,17 @@
   };
 
   /* ── Load / persist data ────────────────────────────── */
+  // Fingerprint the defaults so we detect source-code changes
+  const defaultsFingerprint = Object.keys(defaultSongs).sort()
+    .map(y => `${y}:${defaultSongs[y].song}|${defaultSongs[y].artist}`)
+    .join(";");
+
   function loadSongs() {
     try {
       const stored = localStorage.getItem("loveStorySongs");
-      if (stored) {
+      const storedFP = localStorage.getItem("loveStorySongsFP");
+      // If the defaults changed in source code, discard stale cache
+      if (stored && storedFP === defaultsFingerprint) {
         const parsed = JSON.parse(stored);
         // Backfill fields for data saved before they existed
         Object.keys(parsed).forEach(year => {
@@ -1070,11 +1077,16 @@
         return parsed;
       }
     } catch (_) { /* ignore */ }
+    // Clear stale data when defaults have changed
+    localStorage.removeItem("loveStorySongs");
+    localStorage.removeItem("previewUrlCache");
+    localStorage.setItem("loveStorySongsFP", defaultsFingerprint);
     return JSON.parse(JSON.stringify(defaultSongs));
   }
 
   function saveSongs(data) {
     localStorage.setItem("loveStorySongs", JSON.stringify(data));
+    localStorage.setItem("loveStorySongsFP", defaultsFingerprint);
   }
 
   let songs = loadSongs();
