@@ -74,6 +74,48 @@
     }
 
     /* ── Mesh gradient backgrounds ───────────────────────── */
+    .grad-greeting {
+      --orb1: rgba(255,100,130,0.4);
+      --orb2: rgba(200,80,180,0.35);
+      background:
+        radial-gradient(ellipse 70% 60% at 30% 30%, rgba(180,40,90,0.85), transparent),
+        radial-gradient(ellipse 60% 60% at 75% 25%, rgba(255,100,130,0.7), transparent),
+        radial-gradient(ellipse 60% 50% at 50% 80%, rgba(200,80,180,0.6), transparent),
+        radial-gradient(ellipse 40% 40% at 50% 50%, rgba(100,20,80,0.4), transparent),
+        #0d0618;
+    }
+
+    .greeting-content {
+      text-align: center;
+      padding: 3rem 2rem;
+    }
+
+    .greeting-content .greeting-heart {
+      font-size: 4rem;
+      margin-bottom: 1.5rem;
+      display: block;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    .greeting-content h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      line-height: 1.3;
+      margin-bottom: 0.5rem;
+    }
+
+    .greeting-content .greeting-sub {
+      font-size: 1.3rem;
+      opacity: 0.9;
+      font-weight: 600;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.15); }
+    }
+
     .grad-intro {
       --orb1: rgba(215,109,119,0.35);
       --orb2: rgba(255,175,123,0.3);
@@ -757,6 +799,15 @@
     <span class="year-range">2017 &mdash; 2025</span>
   </div>
   <button class="scroll-hint" id="startBtn">&#9654; Play Our Story</button>
+</section>
+
+<!-- ── GREETING ─────────────────────────────────────── -->
+<section class="slide grad-greeting" id="slide-greeting">
+  <div class="greeting-content animate-in">
+    <span class="greeting-heart">&#10084;&#65039;</span>
+    <h1>Hello Shoi</h1>
+    <p class="greeting-sub">Happy Valentine&#8217;s Day &#10084;&#65039;</p>
+  </div>
 </section>
 
 <!-- Year slides injected by JS -->
