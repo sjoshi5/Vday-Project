@@ -1244,7 +1244,7 @@
           <div class="year-label">${year}</div>
           <div class="song-title">${escapeHtml(s.song)}</div>
           <div class="artist-name">${escapeHtml(s.artist)}</div>
-          <div class="memory">&ldquo;${escapeHtml(s.memory)}&rdquo;</div>
+          <div class="memory">&ldquo;${escapeHtml((defaultSongs[year] && defaultSongs[year].memory) || s.memory)}&rdquo;</div>
           <button class="play-btn" data-year="${year}" style="display:none">\u25B6</button>
         </div>
         ${funFactHtml}
@@ -1314,8 +1314,6 @@
         <input type="text" data-year="${year}" data-field="artist" value="${escapeAttr(s.artist)}">
         <label>Album Art URL <span style="opacity:0.5">(optional)</span></label>
         <input type="url" data-year="${year}" data-field="albumArt" value="${escapeAttr(s.albumArt)}" placeholder="https://...">
-        <label>Memory</label>
-        <textarea data-year="${year}" data-field="memory">${escapeHtml(s.memory)}</textarea>
         <label>Fun Fact <span style="opacity:0.5">(optional)</span></label>
         <textarea data-year="${year}" data-field="funFact">${escapeHtml(s.funFact || "")}</textarea>
       `;
