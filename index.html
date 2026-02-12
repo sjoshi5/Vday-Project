@@ -1056,10 +1056,15 @@
       const stored = localStorage.getItem("loveStorySongs");
       if (stored) {
         const parsed = JSON.parse(stored);
-        // Backfill spotifyUrl for data saved before this field existed
+        // Backfill fields for data saved before they existed
         Object.keys(parsed).forEach(year => {
-          if (!("spotifyUrl" in parsed[year])) {
-            parsed[year].spotifyUrl = defaultSongs[year] ? defaultSongs[year].spotifyUrl : "";
+          if (defaultSongs[year]) {
+            if (!("spotifyUrl" in parsed[year])) {
+              parsed[year].spotifyUrl = defaultSongs[year].spotifyUrl || "";
+            }
+            if (!("funFact" in parsed[year])) {
+              parsed[year].funFact = defaultSongs[year].funFact || "";
+            }
           }
         });
         return parsed;
@@ -1220,7 +1225,7 @@
 
       const side = idx % 2 === 0 ? "side-left" : "side-right";
       const funFactHtml = s.funFact ? `
-        <div class="fun-fact-wrapper ${side}">
+        <div class="fun-fact-wrapper ${side} animate-in">
           <button class="fun-fact-toggle" onclick="this.parentElement.classList.toggle('open')">Fun Fact <span class="arrow">&#9660;</span></button>
           <div class="fun-fact-body">
             <span class="fun-fact-label">Fun Fact</span>
